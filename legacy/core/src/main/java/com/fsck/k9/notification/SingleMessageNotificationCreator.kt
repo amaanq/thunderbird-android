@@ -1,6 +1,7 @@
 package com.fsck.k9.notification
 
 import android.app.Application
+import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.WearableExtender
 import androidx.core.graphics.drawable.IconCompat
@@ -63,6 +64,7 @@ internal class SingleMessageNotificationCreator(
     }
 
     private suspend fun NotificationBuilder.setAvatar(content: NotificationContent) = apply {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return@apply // setLargeIcon requires API 23.
         resourceProvider.avatar(content.sender)?.let {
             setLargeIcon(IconCompat.createWithAdaptiveBitmap(it).toIcon(application))
         }
