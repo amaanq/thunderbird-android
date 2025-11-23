@@ -8,6 +8,7 @@ const val DISPLAY_SETTINGS_DEFAULT_IS_AUTO_FIT_WIDTH = true
 const val DISPLAY_SETTINGS_DEFAULT_IS_SHOW_ANIMATION = true
 val DISPLAY_SETTINGS_DEFAULT_BODY_CONTENT_TYPE = BodyContentType.TEXT_HTML
 const val DISPLAY_SETTINGS_DEFAULT_DRAWER_EXPAND_ALL_FOLDER = false
+const val DISPLAY_SETTINGS_DEFAULT_USE_MATERIAL_YOU = true
 
 data class DisplayVisualSettings(
     val isShowAnimations: Boolean = DISPLAY_SETTINGS_DEFAULT_IS_SHOW_ANIMATION,
@@ -15,5 +16,6 @@ data class DisplayVisualSettings(
     val isAutoFitWidth: Boolean = DISPLAY_SETTINGS_DEFAULT_IS_AUTO_FIT_WIDTH,
     val bodyContentType: BodyContentType = DISPLAY_SETTINGS_DEFAULT_BODY_CONTENT_TYPE,
     val drawerExpandAllFolder: Boolean = DISPLAY_SETTINGS_DEFAULT_DRAWER_EXPAND_ALL_FOLDER,
+    val useMaterialYou: Boolean = DISPLAY_SETTINGS_DEFAULT_USE_MATERIAL_YOU,
     val messageListSettings: DisplayMessageListSettings = DisplayMessageListSettings(),
 )

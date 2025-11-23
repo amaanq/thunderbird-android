@@ -43,6 +43,7 @@ class GeneralSettingsDataStore(
         return when (key) {
             "fixed_message_view_theme" -> coreSettings.fixedMessageViewTheme
             "animations" -> visualSettings.isShowAnimations
+            "use_material_you" -> visualSettings.useMaterialYou
             "show_unified_inbox" -> inboxSettings.isShowUnifiedInbox
             "show_starred_count" -> inboxSettings.isShowStarredCount
             "messagelist_stars" -> inboxSettings.isShowMessageListStars
@@ -75,6 +76,7 @@ class GeneralSettingsDataStore(
         when (key) {
             "fixed_message_view_theme" -> setFixedMessageViewTheme(value)
             "animations" -> setIsShowAnimations(isShowAnimations = value)
+            "use_material_you" -> setUseMaterialYou(useMaterialYou = value)
             "drawerExpandAllFolder" -> setDrawerExpandAllFolder(drawerExpandAllFolder = value)
             "show_unified_inbox" -> setIsShowUnifiedInbox(value)
             "show_starred_count" -> setIsShowStarredCount(isShowStarredCount = value)
@@ -436,6 +438,19 @@ class GeneralSettingsDataStore(
                 display = settings.display.copy(
                     visualSettings = settings.display.visualSettings.copy(
                         isShowAnimations = isShowAnimations,
+                    ),
+                ),
+            )
+        }
+    }
+
+    private fun setUseMaterialYou(useMaterialYou: Boolean) {
+        skipSaveSettings = true
+        generalSettingsManager.update { settings ->
+            settings.copy(
+                display = settings.display.copy(
+                    visualSettings = settings.display.visualSettings.copy(
+                        useMaterialYou = useMaterialYou,
                     ),
                 ),
             )

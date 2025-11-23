@@ -198,6 +198,12 @@
                 android:title="@string/animations_title"
                 />
 
+            <CheckBoxPreference
+                android:key="use_material_you"
+                android:summary="@string/use_material_you_summary"
+                android:title="@string/use_material_you_title"
+                />
+
         </PreferenceCategory>
 
         <PreferenceCategory

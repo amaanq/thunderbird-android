@@ -78,7 +78,8 @@ class GeneralSettingsFragment : PreferenceFragmentCompat() {
         preferenceManager.preferenceDataStore = dataStore
         this.rootKey = rootKey
         setPreferencesFromResource(R.xml.general_settings, rootKey)
-        val listener = Preference.OnPreferenceChangeListener { _, newValue ->
+
+        val syncDebugListener = Preference.OnPreferenceChangeListener { _, newValue ->
             if (!(newValue as Boolean)) {
                 jobManager.cancelDebugLogLimit()
                 exportSyncDebugLogsResultContract.launch(formatFileExportUriString())
@@ -87,7 +88,19 @@ class GeneralSettingsFragment : PreferenceFragmentCompat() {
             }
             true
         }
-        findPreference<Preference>("sync_debug_logging")?.onPreferenceChangeListener = listener
+        findPreference<Preference>("sync_debug_logging")?.onPreferenceChangeListener = syncDebugListener
+
+        findPreference<Preference>("use_material_you")?.onPreferenceChangeListener =
+            Preference.OnPreferenceChangeListener { _, _ ->
+                androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setMessage(R.string.material_you_restart_message)
+                    .setPositiveButton(R.string.restart_now) { _, _ ->
+                        android.os.Process.killProcess(android.os.Process.myPid())
+                    }
+                    .setNegativeButton(R.string.restart_later, null)
+                    .show()
+                true
+            }
         featureFlagProvider.provide("disable_font_size_config".toFeatureFlagKey())
             .onEnabled {
                 val parentPreference = findPreference<PreferenceCategory>("global_preferences")
