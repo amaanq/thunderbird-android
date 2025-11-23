@@ -25,6 +25,7 @@ class DefaultDisplaySettingsPreferenceManager(
 
     override fun save(config: DisplaySettings) {
         logger.debug(TAG) { "save() called with: config = $config" }
+        android.util.Log.e("MATERIAL_YOU_PARENT", "DisplaySettings.save() called with visualSettings.useMaterialYou=${config.visualSettings.useMaterialYou}")
         coreSettingsPreferenceManager.save(config.coreSettings)
         inboxSettingsPreferenceManager.save(config.inboxSettings)
         visualSettingsPreferenceManager.save(config.visualSettings)

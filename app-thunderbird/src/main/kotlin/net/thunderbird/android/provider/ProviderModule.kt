@@ -15,7 +15,7 @@ internal val providerModule = module {
         TbAppNameProvider(androidContext())
     } binds arrayOf(AppNameProvider::class, BrandNameProvider::class, FilePrefixProvider::class)
 
-    single<ThemeProvider> { TbThemeProvider() }
+    single<ThemeProvider> { TbThemeProvider(visualSettingsManager = get()) }
 
     single<FeatureThemeProvider> { TbFeatureThemeProvider() }
 

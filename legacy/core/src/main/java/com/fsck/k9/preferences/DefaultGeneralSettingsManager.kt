@@ -170,7 +170,6 @@ internal class DefaultGeneralSettingsManager(
     override fun save(config: GeneralSettings) {
         coroutineScope.launch(backgroundDispatcher) {
             mutex.withLock {
-                saveSettings()
                 privacySettingsPreferenceManager.save(config.privacy)
                 notificationPreferenceManager.save(config.notification)
                 displaySettingsSettingsPreferenceManager.save(config.display)
@@ -182,6 +181,7 @@ internal class DefaultGeneralSettingsManager(
                 networkSettingsPreferenceManager.save(config.network)
                 debuggingSettingsPreferenceManager.save(config.debugging)
                 interactionSettingsPreferenceManager.save(config.interaction)
+                saveSettings()
             }
         }
     }

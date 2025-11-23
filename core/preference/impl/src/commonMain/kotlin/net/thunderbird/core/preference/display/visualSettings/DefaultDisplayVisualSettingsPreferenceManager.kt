@@ -52,8 +52,8 @@ class DefaultDisplayVisualSettingsPreferenceManager(
 
     override fun save(config: DisplayVisualSettings) {
         logger.debug(TAG) { "save() called with: config = $config" }
-        writeConfig(config)
         internalConfigState.update { config }
+        writeConfig(config)
     }
 
     private fun loadConfig(): DisplayVisualSettings = DisplayVisualSettings(
@@ -77,6 +77,10 @@ class DefaultDisplayVisualSettingsPreferenceManager(
             KEY_DRAWER_EXPAND_ALL_FOLDER,
             DISPLAY_SETTINGS_DEFAULT_DRAWER_EXPAND_ALL_FOLDER,
         ),
+        useMaterialYou = storage.getBoolean(
+            KEY_USE_MATERIAL_YOU,
+            DISPLAY_SETTINGS_DEFAULT_USE_MATERIAL_YOU,
+        ),
 
     )
 
@@ -92,6 +96,7 @@ class DefaultDisplayVisualSettingsPreferenceManager(
                 storageEditor.putBoolean(KEY_AUTO_FIT_WIDTH, config.isAutoFitWidth)
                 storageEditor.putEnum(KEY_MESSAGE_VIEW_BODY_CONTENT_TYPE, config.bodyContentType)
                 storageEditor.putBoolean(KEY_DRAWER_EXPAND_ALL_FOLDER, config.drawerExpandAllFolder)
+                storageEditor.putBoolean(KEY_USE_MATERIAL_YOU, config.useMaterialYou)
                 messageListPreferences.save(config.messageListSettings)
                 storageEditor.commit().also { commited ->
                     logger.verbose(TAG) { "writeConfig: storageEditor.commit() resulted in: $commited" }

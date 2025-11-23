@@ -673,6 +673,11 @@
 
     <string name="animations_title">Animation</string>
     <string name="animations_summary">Use gaudy visual effects</string>
+    <string name="use_material_you_title">Material You</string>
+    <string name="use_material_you_summary">Adapt colors to match wallpaper</string>
+    <string name="material_you_restart_message">Restart app to apply theme changes?</string>
+    <string name="restart_now">Restart now</string>
+    <string name="restart_later">Later</string>
 
     <string name="volume_navigation_title_short">Volume key navigation</string>
     <string name="volume_navigation_summary">Navigate between messages using the volume keys in message view</string>
