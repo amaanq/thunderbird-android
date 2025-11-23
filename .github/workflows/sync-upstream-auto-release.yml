@@ -1,0 +1,222 @@
+name: Sync Upstream and Auto-Release
+
+on:
+  schedule:
+    # Run daily at 3 AM UTC
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: "Force create release even if no changes"
+        required: false
+        type: boolean
+        default: false
+      app_variant:
+        description: "App variant for release"
+        required: true
+        default: "thunderbird"
+        type: choice
+        options:
+          - thunderbird
+          - k9mail
+          - both
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/thunderbird/thunderbird-android.git 2>/dev/null || true
+
+      - name: Fetch upstream
+        run: |
+          git fetch upstream
+          git fetch upstream --tags
+
+      - name: Check for updates
+        id: check
+        run: |
+          BEHIND=$(git rev-list HEAD..upstream/main --count)
+
+          if [ "$BEHIND" -eq 0 ] && [ "${{ inputs.force_release }}" != "true" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "Already up to date with upstream"
+            exit 0
+          fi
+
+          if [ "$BEHIND" -gt 0 ]; then
+            echo "Upstream has $BEHIND new commit(s)"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "Forcing release creation"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Rebase on upstream
+        if: steps.check.outputs.has_changes == 'true'
+        id: rebase
+        run: |
+          echo "Attempting to rebase on upstream/main..."
+
+          git rebase upstream/main || {
+            echo "rebase_failed=true" >> $GITHUB_OUTPUT
+            echo "Rebase failed! Manual intervention required."
+            git rebase --abort
+            exit 1
+          }
+
+          echo "rebase_failed=false" >> $GITHUB_OUTPUT
+          echo "Successfully rebased on upstream"
+
+      - name: Determine version tag
+        if: steps.check.outputs.has_changes == 'true' && steps.rebase.outputs.rebase_failed != 'true'
+        id: version
+        run: |
+          VERSION=$(grep "versionName" app-thunderbird/build.gradle.kts | head -1 | sed -E 's/.*versionName.*=.*"(.*)".*/\1/' || echo "unknown")
+
+          SHORT_HASH=$(git rev-parse --short HEAD)
+
+          TIMESTAMP=$(date +%Y%m%d-%H%M)
+
+          VARIANT="${{ inputs.app_variant }}"
+          if [ -z "$VARIANT" ] || [ "$VARIANT" == "thunderbird" ]; then
+            VARIANT_SUFFIX=""
+          elif [ "$VARIANT" == "k9mail" ]; then
+            VARIANT_SUFFIX="-k9"
+          else
+            VARIANT_SUFFIX="-both"
+          fi
+
+          TAG_NAME="custom-${VERSION}-${TIMESTAMP}-${SHORT_HASH}${VARIANT_SUFFIX}"
+
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Created tag name: $TAG_NAME"
+
+      - name: Create and push tag
+        if: steps.check.outputs.has_changes == 'true' && steps.rebase.outputs.rebase_failed != 'true'
+        run: |
+          TAG="${{ steps.version.outputs.tag_name }}"
+
+          git tag -a "$TAG" -m "Auto-sync with upstream - $TAG"
+          echo "Created tag: $TAG"
+
+          git push --force-with-lease origin main
+          git push origin --tags
+
+          echo "Pushed main branch and tag: $TAG"
+
+      - name: Create summary
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          echo "## Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Rebase Status**: ${{ steps.rebase.outputs.rebase_failed == 'true' && '❌ Failed' || '✅ Success' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version Tag**: \`${{ steps.version.outputs.tag_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Base Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.rebase.outputs.rebase_failed }}" != "true" ]; then
+            echo "### Changes" >> $GITHUB_STEP_SUMMARY
+            git log --oneline HEAD~$BEHIND..HEAD >> $GITHUB_STEP_SUMMARY || true
+          fi
+
+      - name: Notify on failure
+        if: failure() && steps.rebase.outputs.rebase_failed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Upstream sync rebase failed',
+              body: `The automated upstream sync failed during rebase.
+
+              **Workflow Run**: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+
+              Manual intervention is required to resolve conflicts and sync with upstream.
+
+              Please:
+              1. Pull the latest changes
+              2. Add upstream remote: \`git remote add upstream https://github.com/thunderbird/thunderbird-android.git\`
+              3. Fetch upstream: \`git fetch upstream\`
+              4. Rebase: \`git rebase upstream/main\`
+              5. Resolve any conflicts
+              6. Force push: \`git push --force-with-lease origin main\`
+              `,
+              labels: ['automated', 'sync-failed', 'needs-attention']
+            })
+
+  trigger-release:
+    needs: sync
+    runs-on: ubuntu-latest
+    if: needs.sync.outputs.has_changes == 'true'
+
+    steps:
+      - name: Trigger release workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const variant = '${{ inputs.app_variant }}' || 'thunderbird';
+
+            if (variant === 'both') {
+              // Trigger for both variants
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'release-custom.yml',
+                ref: 'main',
+                inputs: {
+                  appVariant: 'thunderbird',
+                  buildType: 'debug'
+                }
+              });
+
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'release-custom.yml',
+                ref: 'main',
+                inputs: {
+                  appVariant: 'k9mail',
+                  buildType: 'debug'
+                }
+              });
+            } else {
+              // Trigger for single variant
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'release-custom.yml',
+                ref: 'main',
+                inputs: {
+                  appVariant: variant,
+                  buildType: 'debug'
+                }
+              });
+            }
+
+            core.info(`Triggered release workflow for variant: ${variant}`);
